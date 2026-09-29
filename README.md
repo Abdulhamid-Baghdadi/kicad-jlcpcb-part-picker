@@ -25,10 +25,11 @@ KiCad's own library does not tie a symbol to one footprint; here every part is a
 - **On its own:** double-click `LCSC to KiCad.bat` (Windows), or run `run.py` with KiCad's Python.
 - **From the command line:** `python run.py C6186 C25804` imports those parts without the window.
 
-In the window:
-1. Type a part, a value or an LCSC number (*AMS1117-3.3*, *10k 0603*, *C6186*) and press Enter. The results show the maker, package, stock and price, and whether it is a *Basic* part, which JLCPCB assembles without a setup fee; tick **Basic parts only** to see only those.
-2. Select a part to see what EasyEDA has of it: symbol, footprint and 3D model. **Datasheet** and **LCSC page** open them in your browser.
-3. Double-click it, or select several and press **Import selected**. Each is converted into your library; **In library** says which already are, and **Replace…** converts them again.
+In the window, laid out as EasyEDA's part selector:
+1. Choose a category on the left, with how many parts each holds, or type a part, a value or an LCSC number (*AMS1117-3.3*, *10k 0603*, *C6186*) and press Enter. **In stock** and **Basic parts only** narrow the results, Basic parts being those JLCPCB assembles without a setup fee, and **Sort** orders them by stock or price.
+2. Each part is a card: its photo, its name (a link to its LCSC page), its footprint, maker, LCSC number and datasheet, its price at each quantity, its stock, and whether it is Basic or Extended.
+3. Click a card to see what EasyEDA has drawn of it, symbol, footprint and 3D model, with a picture of its symbol. It is asked one part at a time: EasyEDA turns away many requests at once for a few minutes.
+4. **Import** puts it into your library; **✓ In library** marks those already there, and a right-click imports one again, replacing it.
 
 The library is `Documents/KiCad/lcsc-library/LCSC.kicad_sym`, `LCSC.pretty` and `LCSC.3dshapes`, which **Library…** changes. The first import adds it to KiCad's global symbol and footprint tables, keeping a copy of each table as `*.before-lcsc`. Restart KiCad, or open **Preferences › Manage Libraries**, to see it. In the Schematic editor, **Place › Add Symbol** then lists it as **LCSC**, each symbol with its footprint set.
 

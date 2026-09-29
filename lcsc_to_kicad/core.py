@@ -15,6 +15,7 @@ from pathlib import Path
 
 SEARCH = "https://jlcpcb.com/api/overseas-pcb-order/v1/shoppingCart/smtGood/selectSmtComponentList"
 EASYEDA = "https://easyeda.com/api/products/{}/components?version=6.4.19.5"
+FILE = "https://jlcpcb.com/api/file/downloadByFileSystemAccessId/{}"
 SETTINGS = Path.home() / ".lcsc-to-kicad.json"
 AGENT = "lcsc-to-kicad (KiCad library tool)"
 
@@ -57,13 +58,30 @@ def _get(url, timeout=20):
         return json.loads(response.read().decode("utf-8"))
 
 
-def search(keyword, page=1, size=30):
-    """Parts matching {keyword}, a name, a value or an LCSC number such as C6186: (total, parts), each a dict."""
-    answer = _post(SEARCH, {"keyword": keyword, "currentPage": page, "pageSize": size})
+SORTS = {"Relevance": None, "Stock, most first": ("STOCK_SORT", "DESC"), "Price, lowest first": ("PRICE_SORT", "ASC"),
+         "Price, highest first": ("PRICE_SORT", "DESC")}
+
+
+def search(keyword, page=1, size=20, category=None, subcategory=None, basic=False, in_stock=False, sort=None):
+    """Parts matching {keyword} (a name, a value or an LCSC number such as C6186; empty for all) in {category} or its
+    {subcategory}, Basic parts only, in stock only, sorted as {sort} names one of SORTS: (total, parts), each a dict."""
+    body = {"keyword": keyword, "currentPage": page, "pageSize": size}
+    if subcategory:
+        body["secondSortName"] = subcategory
+    elif category:
+        body["firstSortName"] = category
+    if basic:
+        body["componentLibraryType"] = "base"
+    if in_stock:
+        body["stockFlag"] = True
+    if SORTS.get(sort):
+        body["sortMode"], body["sortASC"] = SORTS[sort]
+    answer = _post(SEARCH, body)
     info = ((answer or {}).get("data") or {}).get("componentPageInfo") or {}
     parts = []
     for item in info.get("list") or []:
-        prices = item.get("componentPrices") or []
+        prices = sorted(item.get("componentPrices") or [], key=lambda price: price.get("startNumber") or 0)
+        image = item.get("minImage") or item.get("componentImageUrl") or ""
         parts.append({
             "lcsc": item.get("componentCode") or "",
             "mpn": item.get("componentModelEn") or "",
@@ -73,22 +91,49 @@ def search(keyword, page=1, size=30):
             "description": re.sub(r"[\ud800-\udfff]", "", item.get("describe") or ""),
             "stock": item.get("stockCount") or 0,
             "price": prices[0].get("productPrice") if prices else None,
+            "prices": [(price.get("startNumber"), price.get("productPrice")) for price in prices],
             "basic": item.get("componentLibraryType") == "base",
             "datasheet": item.get("dataManualUrl") or "",
             "url": item.get("lcscGoodsUrl") or "",
+            "image": image.replace("/96x96/", "/224x224/") if image
+            else FILE.format(item["productBigImageAccessId"]) if item.get("productBigImageAccessId") else "",
         })
     return info.get("total") or 0, parts
 
 
+def categories():
+    """LCSC's categories, as JLCPCB sorts its parts: [(name, count, [(subcategory, count), ...]), ...], by name."""
+    answer = _post(SEARCH, {"keyword": "", "currentPage": 1, "pageSize": 1, "searchType": 3})
+    found = []
+    for sort in ((answer or {}).get("data") or {}).get("sortAndCountVoList") or []:
+        children = [(child.get("sortName"), child.get("componentCount") or 0) for child in sort.get("childSortList") or []]
+        found.append((sort.get("sortName"), sort.get("componentCount") or 0, sorted(children, key=lambda child: -child[1])))
+    return sorted(found, key=lambda each: each[0])
+
+
+def picture(url, timeout=20):
+    """A part's photo, as bytes; None when it cannot be had."""
+    if not url:
+        return None
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": AGENT})
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return response.read()
+    except OSError:
+        return None
+
+
 def easyeda(lcsc):
-    """Whether EasyEDA has {lcsc}'s symbol, footprint and 3D model: a dict of three booleans."""
+    """Whether EasyEDA has {lcsc}'s symbol, footprint and 3D model, three booleans, and the picture of its symbol: a dict."""
     try:
         result = (_get(EASYEDA.format(lcsc)) or {}).get("result") or {}
-    except OSError:
-        return {"symbol": False, "footprint": False, "model": False}
+    except (OSError, ValueError) as failure:
+        raise RuntimeError("EasyEDA did not answer for " + lcsc + " (" + str(failure) + "): it turns away many requests at once; try again in a minute.")
     package = result.get("packageDetail") or {}
     shapes = json.dumps(package.get("dataStr") or {})
-    return {"symbol": bool(result.get("dataStr")), "footprint": bool(package), "model": "SVGNODE" in shapes}
+    thumb = result.get("thumb") or ""
+    return {"symbol": bool(result.get("dataStr")), "footprint": bool(package), "model": "SVGNODE" in shapes,
+            "thumb": ("https:" + thumb) if thumb.startswith("//") else thumb}
 
 
 # ——— Converting ———
