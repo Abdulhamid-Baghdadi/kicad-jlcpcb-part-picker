@@ -395,6 +395,14 @@ class LcscDialog(wx.Dialog):
                 child.GetWindow().refresh_state()
 
     def choose_library(self):
+        link = wx.GetTextFromUser("The desktop link from Product Architecture Studio's page (Connect a desktop program…): parts then go into "
+                                  "the server's LCSC library, which every project written from it takes along. Leave it empty for a library "
+                                  "on this computer.", "Where parts go", self.settings.get("server", ""), self)
+        self.settings["server"] = link.strip()
+        if core.to_server(self.settings):
+            core.save_settings(self.settings)
+            self.show_library()
+            return
         with wx.DirDialog(self, "The folder of your LCSC library", self.settings["library"]) as dialog:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -406,6 +414,9 @@ class LcscDialog(wx.Dialog):
         self.show_library()
 
     def show_library(self):
+        if core.to_server(self.settings):
+            self.say("Library: the server's LCSC library, through " + self.settings["server"].split("/api/")[0] + ": each part converted there.")
+            return
         self.say("Library: " + self.settings["name"] + " in " + self.settings["library"]
                  + ("" if core.registered(self.settings) else " (added to KiCad's tables on the first import)"))
 

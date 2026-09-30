@@ -10,6 +10,8 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -27,7 +29,32 @@ def default_settings():
         "library": str(Path.home() / "Documents" / "KiCad" / "lcsc-library"),
         "name": "LCSC",
         "python": "",
+        # The desktop link Product Architecture Studio's page gives (Connect a desktop program…): parts then go into the
+        # server's LCSC library, the one copy, which every KiCad project written from it takes along.
+        "server": "",
     }
+
+
+def to_server(settings):
+    """Whether parts go to Product Architecture Studio's server, rather than into a library on this computer."""
+    return bool((settings.get("server") or "").strip())
+
+
+def _server(settings, method, path, body=None):
+    link = settings["server"].strip().rstrip("/")
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    request = urllib.request.Request(link + "/" + path, data=data, method=method, headers={"Content-Type": "application/json"} if data else {})
+    try:
+        with urllib.request.urlopen(request, timeout=600) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as failure:
+        try:
+            message = json.loads(failure.read().decode("utf-8")).get("error", str(failure))
+        except ValueError:
+            message = str(failure)
+        raise RuntimeError("The server says: " + message)
+    except OSError as failure:
+        raise RuntimeError("The server cannot be reached: " + str(failure))
 
 
 def load_settings():
@@ -174,6 +201,8 @@ def library_paths(settings):
 
 def in_library(settings, lcsc):
     """Whether the library already holds the part {lcsc}."""
+    if to_server(settings):
+        return bool(_server(settings, "GET", "library-has?lcsc=" + urllib.parse.quote(lcsc)).get("kicad"))
     symbols = library_paths(settings)[1]
     try:
         return re.search(r'"LCSC Part"\s+"' + re.escape(lcsc) + '"', symbols.read_text(encoding="utf-8")) is not None
@@ -183,6 +212,8 @@ def in_library(settings, lcsc):
 
 def convert(settings, lcsc, overwrite=False):
     """Converts {lcsc} into the library: its symbol, footprint and 3D model. What easyeda2kicad said, as lines."""
+    if to_server(settings):
+        return [_server(settings, "POST", "library-add", {"lcsc": lcsc}).get("message", "Added " + lcsc + ".")]
     python = converter(settings)
     if python is None:
         raise RuntimeError("easyeda2kicad was not found. Install it with:  python -m pip install easyeda2kicad"
@@ -234,6 +265,8 @@ def kicad_config():
 
 def registered(settings):
     """Whether KiCad's global symbol and footprint tables list the library."""
+    if to_server(settings):
+        return True  # the server's library goes with each project, in its own tables
     config = kicad_config()
     if config is None:
         return False
@@ -262,6 +295,25 @@ def register(settings):
         done.append(table)
     return ("Added " + settings["name"] + " to KiCad's " + " and ".join(done) + ": restart KiCad, or open Preferences › Manage Libraries,"
             " to see it.") if done else settings["name"] + " is already in KiCad's library tables."
+
+
+def unregister(settings):
+    """Takes the library out of KiCad's global symbol and footprint tables, keeping a copy of each as *.before-retire:
+    the server's copy, which each project takes along in its own tables, is then the only one. What was done, in words."""
+    config = kicad_config()
+    if config is None:
+        return "KiCad's settings folder was not found: nothing to take out."
+    done = []
+    for table in ("sym-lib-table", "fp-lib-table"):
+        path = config / table
+        text = _read(path)
+        kept = [line for line in text.splitlines(True) if '(name "' + settings["name"] + '")' not in line]
+        if len(kept) != len(text.splitlines(True)):
+            shutil.copyfile(path, path.with_name(table + ".before-retire"))
+            path.write_text("".join(kept), encoding="utf-8")
+            done.append(table)
+    return ("Took " + settings["name"] + " out of KiCad's " + " and ".join(done) + ", keeping copies as *.before-retire.") if done \
+        else settings["name"] + " is not in KiCad's global tables."
 
 
 def _read(path):

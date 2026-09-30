@@ -2,6 +2,7 @@
 
     run.py                    opens the search window (run it with KiCad's Python, which has wx)
     run.py C6186 C25804 …     imports those LCSC parts into your library, no window
+    run.py --retire           takes the library on this computer out of KiCad's global tables: the server's is the one
 """
 import os
 import sys
@@ -19,8 +20,8 @@ def command_line(numbers):
         if core.in_library(settings, lcsc):
             print(lcsc, "is already in", settings["name"])
             continue
-        core.convert(settings, lcsc)
-        print("Imported", lcsc, "into", settings["name"], "in", settings["library"])
+        for line in core.convert(settings, lcsc)[-1:]:
+            print(line)
     if not core.registered(settings):
         print(core.register(settings))
 
@@ -36,7 +37,9 @@ def window():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if sys.argv[1:] == ["--retire"]:
+        print(core.unregister(core.load_settings()))
+    elif len(sys.argv) > 1:
         command_line(sys.argv[1:])
     else:
         window()
