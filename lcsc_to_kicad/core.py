@@ -316,6 +316,43 @@ def unregister(settings):
         else settings["name"] + " is not in KiCad's global tables."
 
 
+def use(settings, folder):
+    """Tells KiCad where Product Architecture Studio's LCSC library is, {folder}, its `library/lcsc/kicad` on the computer the
+    server runs on: the path variable LCSC_LIBRARY, by which its footprints name their 3D models, and LCSC in KiCad's global
+    symbol and footprint tables, in place of any LCSC there, each file kept as *.before-use. What was done, in words."""
+    folder = Path(folder).resolve()
+    name = settings["name"]
+    if not (folder / (name + ".kicad_sym")).is_file() or not (folder / (name + ".pretty")).is_dir():
+        raise RuntimeError(str(folder) + " holds no " + name + ".kicad_sym and " + name + ".pretty.")
+    config = kicad_config()
+    if config is None:
+        raise RuntimeError("KiCad's settings folder was not found: start KiCad once, then try again.")
+    variable = name + "_LIBRARY"
+    common = config / "kicad_common.json"
+    try:
+        data = json.loads(_read(common) or "{}")
+    except ValueError:
+        raise RuntimeError(str(common) + " cannot be read, and is left as it is.")
+    if common.exists():
+        shutil.copyfile(common, common.with_name("kicad_common.json.before-use"))
+    variables = data.setdefault("environment", {}).get("vars") or {}
+    variables[variable] = str(folder)
+    data["environment"]["vars"] = variables
+    common.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    for table, kind, uri in (("sym-lib-table", "sym_lib_table", name + ".kicad_sym"), ("fp-lib-table", "fp_lib_table", name + ".pretty")):
+        path = config / table
+        text = _read(path) or "(" + kind + "\n  (version 7)\n)\n"
+        if path.exists():
+            shutil.copyfile(path, path.with_name(table + ".before-use"))
+        kept = "".join(line for line in text.splitlines(True) if '(name "' + name + '")' not in line)
+        entry = '  (lib (name "{}")(type "KiCad")(uri "${{{}}}/{}")(options "")(descr "Parts from LCSC, Product Architecture Studio\'s library"))\n'.format(
+            name, variable, uri)
+        end = kept.rstrip().rfind(")")
+        path.write_text(kept[:end].rstrip() + "\n" + entry + ")\n", encoding="utf-8")
+    return ("KiCad now finds " + name + " in " + str(folder) + ": " + variable + " is set, and " + name + " is in its global symbol and"
+            " footprint tables (the files before kept as *.before-use). Restart KiCad to see it.")
+
+
 def _read(path):
     try:
         return path.read_text(encoding="utf-8")

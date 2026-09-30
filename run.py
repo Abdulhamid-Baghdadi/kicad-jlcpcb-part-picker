@@ -3,6 +3,7 @@
     run.py                    opens the search window (run it with KiCad's Python, which has wx)
     run.py C6186 C25804 …     imports those LCSC parts into your library, no window
     run.py --retire           takes the library on this computer out of KiCad's global tables: the server's is the one
+    run.py --use <folder>     tells KiCad where the server's library is, its library/lcsc/kicad, when it runs on this computer
 """
 import os
 import sys
@@ -39,6 +40,8 @@ def window():
 if __name__ == "__main__":
     if sys.argv[1:] == ["--retire"]:
         print(core.unregister(core.load_settings()))
+    elif len(sys.argv) == 3 and sys.argv[1] == "--use":
+        print(core.use(core.load_settings(), sys.argv[2]))
     elif len(sys.argv) > 1:
         command_line(sys.argv[1:])
     else:
