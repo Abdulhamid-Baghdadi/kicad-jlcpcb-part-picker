@@ -1,6 +1,6 @@
 # LCSC parts to KiCad
 
-A small tool for KiCad: search LCSC's parts, as JLCPCB's parts search finds them, and import those you choose into Product Architecture Studio's LCSC library, the one copy, on the server. Each part comes as EasyEDA has drawn it:
+A small tool for KiCad: search LCSC's parts, as JLCPCB's parts search finds them, and import those you choose into Modular Electronics Studio's LCSC library, the one copy, on the server. Each part comes as EasyEDA has drawn it:
 - its symbol, with its footprint already set and its LCSC number;
 - its footprint;
 - its 3D model, as STEP where there is one, so that KiCad's STEP export has it.
@@ -33,7 +33,7 @@ In the window, laid out as EasyEDA's part selector:
 
 ## Where the parts go
 
-**Library…** asks for the desktop link that Product Architecture Studio's page gives (**Connect a desktop program…**). With it, each part is converted on the server and goes into its LCSC library, `library/lcsc/kicad`: its symbol, footprint and 3D model, and an element of its own, whose pins are its ports, with the part's record from LCSC. The page's **Parts from LCSC…** adds parts to the same library. Every KiCad project the server writes takes the library along in its `libraries/` folder, listed as **LCSC** in the project's own symbol and footprint tables, so KiCad needs no global library.
+**Library…** asks for the desktop link that Modular Electronics Studio's page gives (**Connect a desktop program…**). With it, each part is converted on the server and goes into its LCSC library, `library/lcsc/kicad`: its symbol, footprint and 3D model, and an element of its own, whose pins are its ports, with the part's record from LCSC. The page's **Parts from LCSC…** adds parts to the same library. Every KiCad project the server writes takes the library along in its `libraries/` folder, listed as **LCSC** in the project's own symbol and footprint tables, so KiCad needs no global library.
 
 Without a link, the tool keeps a library on this computer, as it did before: `Documents/KiCad/lcsc-library/LCSC.kicad_sym`, `LCSC.pretty` and `LCSC.3dshapes`, added to KiCad's global symbol and footprint tables at the first import (copies kept as `*.before-lcsc`). To move to the server's library, give **Library…** the link, and run `python run.py --retire`: it takes **LCSC** out of KiCad's global tables, keeping copies as `*.before-retire`, so that a project's own **LCSC**, the server's, is the one KiCad finds. The folder on this computer is then no longer used; delete it when you like.
 

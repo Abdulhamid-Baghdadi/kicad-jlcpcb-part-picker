@@ -29,14 +29,14 @@ def default_settings():
         "library": str(Path.home() / "Documents" / "KiCad" / "lcsc-library"),
         "name": "LCSC",
         "python": "",
-        # The desktop link Product Architecture Studio's page gives (Connect a desktop program…): parts then go into the
+        # The desktop link Modular Electronics Studio's page gives (Connect a desktop program…): parts then go into the
         # server's LCSC library, the one copy, which every KiCad project written from it takes along.
         "server": "",
     }
 
 
 def to_server(settings):
-    """Whether parts go to Product Architecture Studio's server, rather than into a library on this computer."""
+    """Whether parts go to Modular Electronics Studio's server, rather than into a library on this computer."""
     return bool((settings.get("server") or "").strip())
 
 
@@ -317,7 +317,7 @@ def unregister(settings):
 
 
 def use(settings, folder):
-    """Tells KiCad where Product Architecture Studio's LCSC library is, {folder}, its `library/lcsc/kicad` on the computer the
+    """Tells KiCad where Modular Electronics Studio's LCSC library is, {folder}, its `library/lcsc/kicad` on the computer the
     server runs on: the path variable LCSC_LIBRARY, by which its footprints name their 3D models, and LCSC in KiCad's global
     symbol and footprint tables, in place of any LCSC there, each file kept as *.before-use. What was done, in words."""
     folder = Path(folder).resolve()
@@ -345,7 +345,7 @@ def use(settings, folder):
         if path.exists():
             shutil.copyfile(path, path.with_name(table + ".before-use"))
         kept = "".join(line for line in text.splitlines(True) if '(name "' + name + '")' not in line)
-        entry = '  (lib (name "{}")(type "KiCad")(uri "${{{}}}/{}")(options "")(descr "Parts from LCSC, Product Architecture Studio\'s library"))\n'.format(
+        entry = '  (lib (name "{}")(type "KiCad")(uri "${{{}}}/{}")(options "")(descr "Parts from LCSC, Modular Electronics Studio\'s library"))\n'.format(
             name, variable, uri)
         end = kept.rstrip().rfind(")")
         path.write_text(kept[:end].rstrip() + "\n" + entry + ")\n", encoding="utf-8")

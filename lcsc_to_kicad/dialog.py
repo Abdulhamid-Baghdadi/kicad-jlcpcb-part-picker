@@ -395,7 +395,7 @@ class LcscDialog(wx.Dialog):
                 child.GetWindow().refresh_state()
 
     def choose_library(self):
-        link = wx.GetTextFromUser("The desktop link from Product Architecture Studio's page (Connect a desktop program…): parts then go into "
+        link = wx.GetTextFromUser("The desktop link from Modular Electronics Studio's page (Connect a desktop program…): parts then go into "
                                   "the server's LCSC library, which every project written from it takes along. Leave it empty for a library "
                                   "on this computer.", "Where parts go", self.settings.get("server", ""), self)
         self.settings["server"] = link.strip()
