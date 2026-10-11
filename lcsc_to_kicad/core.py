@@ -2,8 +2,11 @@
 one library of your own, which KiCad's Schematic and PCB editors then both find.
 
 The search asks JLCPCB's parts search, as its website does; the conversion is easyeda2kicad's (AGPL-3.0), run with a
-Python that has it installed (pip install easyeda2kicad). Nothing here needs KiCad's own Python but the window.
+Python that has it installed (pip install easyeda2kicad). Each part converted is checked, as Modular Electronics Studio
+checks its own library, and LCSC's record of it written into its symbol. Nothing here needs KiCad's own Python but the
+window and placing a part on a board (place.py).
 """
+import datetime
 import json
 import os
 import re
@@ -228,7 +231,11 @@ def convert(settings, lcsc, overwrite=False):
     if done.returncode != 0 or not symbols.exists():
         raise RuntimeError("easyeda2kicad could not convert " + lcsc + ":\n" + "\n".join(lines[-8:]))
     prefer_step(footprints, models)
-    return lines
+    try:
+        describe(settings, lcsc)
+    except (OSError, ValueError) as failure:
+        lines.append("No record of " + lcsc + " from LCSC: " + str(failure))
+    return lines + check(folder, settings["name"], {lcsc})
 
 
 def prefer_step(footprints, models):
@@ -246,6 +253,173 @@ def prefer_step(footprints, models):
         changed = re.sub(r'\(model "([^"]+\.wrl)"', step, text)
         if changed != text:
             footprint.write_text(changed, encoding="utf-8")
+
+
+def describe(settings, lcsc):
+    """Writes LCSC's record of {lcsc} into its symbol, as hidden fields: Manufacturer, MPN, Description and, where it has
+    none, Datasheet; and the record, with its price breaks and stock, into records.json beside the library. The record,
+    or None when LCSC has none."""
+    found = next((part for part in search(lcsc, size=10)[1] if part["lcsc"].upper() == lcsc.upper()), None)
+    if found is None:
+        return None
+    folder, symbols, _, _ = library_paths(settings)
+    text = _read(symbols)
+    for start, end in reversed(blocks(text, "symbol")):
+        block = text[start:end]
+        if number_of(block).upper() != lcsc.upper():
+            continue
+        for field, value in (("Manufacturer", found["maker"]), ("MPN", found["mpn"]), ("Description", found["description"])):
+            block = set_prop(block, field, value)
+        if not prop(block, "Datasheet"):
+            block = set_prop(block, "Datasheet", found["datasheet"])
+        text = text[:start] + block + text[end:]
+    _write(symbols, text)
+    records = folder / "records.json"
+    try:
+        kept = json.loads(_read(records) or "{}")
+    except ValueError:
+        kept = {}
+    kept[lcsc.upper()] = dict(found, checked=datetime.date.today().isoformat())
+    _write(records, json.dumps(dict(sorted(kept.items())), indent=1, ensure_ascii=False) + "\n")
+    return found
+
+
+# ——— A library's symbols, as KiCad writes them: only as far as finding them and reading their fields ———
+
+def blocks(text, head):
+    """The spans (start, end) of each block directly inside the outermost one whose head is {head}, as (symbol "…" …)."""
+    spans, depth, start, index, inside = [], 0, None, 0, False
+    while index < len(text):
+        character = text[index]
+        if inside:
+            if character == "\\":
+                index += 1
+            elif character == '"':
+                inside = False
+        elif character == '"':
+            inside = True
+        elif character == "(":
+            depth += 1
+            if depth == 2 and re.match(r"\(\s*" + re.escape(head) + r"[\s)]", text[index:index + len(head) + 3]):
+                start = index
+        elif character == ")":
+            if depth == 2 and start is not None:
+                spans.append((start, index + 1))
+                start = None
+            depth -= 1
+        index += 1
+    return spans
+
+
+def first_string(block):
+    """The block's first quoted atom, such as a symbol's name."""
+    found = re.match(r'\(\s*\w+\s+"((?:[^"\\]|\\.)*)"', block)
+    return found.group(1) if found else ""
+
+
+def prop(block, name):
+    """A symbol's property {name}, or ''."""
+    found = re.search(r'\(property\s+"' + re.escape(name) + r'"\s+"((?:[^"\\]|\\.)*)"', block)
+    value = found.group(1) if found else ""
+    return "" if value == "~" else value
+
+
+def number_of(block):
+    """A symbol's LCSC number, as easyeda2kicad names it (LCSC Part) or as others do (LCSC); '' when it has none."""
+    return prop(block, "LCSC Part") or prop(block, "LCSC")
+
+
+def _quote(text):
+    return '"' + str(text).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def set_prop(block, name, value):
+    """{block}, a symbol, with its property {name} set to {value}: changed where it has it, else added after its last
+    property, hidden."""
+    if not value:
+        return block
+    pattern = re.compile(r'(\(property\s+"' + re.escape(name) + r'"\s+)"(?:[^"\\]|\\.)*"')
+    if pattern.search(block):
+        return pattern.sub(lambda match: match.group(1) + _quote(value), block, count=1)
+    last = None
+    for found in re.finditer(r"\(property\s", block):
+        last = found
+    if last is None:
+        return block
+    # The end of the last property: its parentheses closed.
+    depth, index, inside = 0, last.start(), False
+    while index < len(block):
+        character = block[index]
+        if inside:
+            if character == "\\":
+                index += 1
+            elif character == '"':
+                inside = False
+        elif character == '"':
+            inside = True
+        elif character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+            if depth == 0:
+                break
+        index += 1
+    indent = re.search(r"\n([ \t]*)\(property", block)
+    lead = "\n" + (indent.group(1) if indent else "    ")
+    added = lead + "(property " + _quote(name) + " " + _quote(value) + " (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))"
+    return block[:index + 1] + added + block[index + 1:]
+
+
+def pins(block):
+    """The numbers of a symbol's pins, its units' together."""
+    return re.findall(r'\(pin\s+\w+\s+\w+.*?\(number\s+"((?:[^"\\]|\\.)*)"', block, flags=re.S)
+
+
+def symbol(text, lcsc):
+    """The symbol in {text}, a .kicad_sym, whose LCSC number is {lcsc}; None when it has none."""
+    for start, end in blocks(text, "symbol"):
+        if number_of(text[start:end]).upper() == lcsc.upper():
+            return text[start:end]
+    return None
+
+
+# ——— The check ———
+
+def check(folder, name, only=None):
+    """Where the library {name} in {folder} disagrees with itself, one line a finding, PROBLEM or NOTE, the part named:
+    every symbol has an LCSC number and a footprint in the library, every pin a pad of its number on it, a pad no pin
+    names is said (a shield, a mounting hole), and every 3D model a footprint names is there. Only the parts whose LCSC
+    numbers are in {only}, when given."""
+    folder, lines = Path(folder), []
+    text = _read(folder / (name + ".kicad_sym"))
+    for start, end in blocks(text, "symbol"):
+        block = text[start:end]
+        number = number_of(block)
+        if only is not None and number.upper() not in {each.upper() for each in only}:
+            continue
+        part = (number + " " if number else "") + first_string(block)
+        if not number:
+            lines.append("PROBLEM " + part + ": its symbol has no LCSC Part field.")
+        footprint = prop(block, "Footprint")
+        own = footprint.split(":", 1)[-1]
+        path = folder / (name + ".pretty") / (own + ".kicad_mod")
+        if not own or not path.is_file():
+            lines.append("PROBLEM " + part + ": its footprint " + (footprint + " is not in the library" if own else "is not named") + ".")
+            continue
+        board = _read(path)
+        # A pad's number quoted, (pad "1" …), or bare, (pad 1 …), as newer footprints write it.
+        pads = {quoted or bare for quoted, bare in re.findall(r'\(pad\s+(?:"((?:[^"\\]|\\.)*)"|([^\s()"]+))', board)}
+        numbers = pins(block)
+        unpadded = sorted({each for each in numbers if each not in pads})
+        if unpadded:
+            lines.append("PROBLEM " + part + ": pins " + ", ".join(unpadded) + " have no pad on " + footprint + ".")
+        unpinned = sorted(each for each in pads if each and each not in set(numbers))
+        if unpinned:
+            lines.append("NOTE " + part + ": pads " + ", ".join(unpinned) + " of " + footprint + " are no pin's, such as a shield or a mounting hole.")
+        for model in re.findall(r'\(model "([^"]+)"', board):
+            if not (folder / (name + ".3dshapes") / model.replace("\\", "/").split("/")[-1]).is_file():
+                lines.append("PROBLEM " + part + ": its 3D model " + model + " is not in " + name + ".3dshapes.")
+    return lines
 
 
 # ——— KiCad's library tables ———
@@ -353,8 +527,78 @@ def use(settings, folder):
             " footprint tables (the files before kept as *.before-use). Restart KiCad to see it.")
 
 
+def add_to_project(folder, name, project):
+    """Lists the library {name} in {folder} in the KiCad project in {project}, its own symbol and footprint tables, by its
+    path from the project, so that the project finds it wherever it is opened beside it. What was done, in words."""
+    project = Path(project)
+    project.mkdir(parents=True, exist_ok=True)
+    where = os.path.relpath(str(Path(folder).resolve()), str(project.resolve())).replace("\\", "/")
+    done = []
+    for table, kind, entry in (("sym-lib-table", "sym_lib_table", name + ".kicad_sym"), ("fp-lib-table", "fp_lib_table", name + ".pretty")):
+        path = project / table
+        text = _read(path) or "(" + kind + "\n  (version 7)\n)\n"
+        if re.search(r'\(lib\s+\(name\s+"?' + re.escape(name) + r'"?\)', text):
+            continue
+        line = '  (lib (name "{}")(type "KiCad")(uri "${{KIPRJMOD}}/{}/{}")(options "")(descr "LCSC parts converted from EasyEDA"))\n'.format(
+            name, where, entry)
+        end = text.rstrip().rfind(")")
+        _write(path, text[:end].rstrip() + "\n" + line + ")\n")
+        done.append(table)
+    return ("Added " + name + " to the project's " + " and ".join(done) + ".") if done else name + " is already in the project's library tables."
+
+
+# ——— Where KiCad finds a part's footprint ———
+
+def footprint_libraries(project):
+    """The footprint libraries KiCad finds for a board in {project}: {nickname: its .pretty folder}, the project's own
+    table before KiCad's global one, each path with its variables filled in, from the project's folder (KIPRJMOD),
+    KiCad's settings and the environment."""
+    config = kicad_config()
+    variables = dict(os.environ)
+    if config is not None:
+        try:
+            variables.update(((json.loads(_read(config / "kicad_common.json") or "{}").get("environment") or {}).get("vars")) or {})
+        except ValueError:
+            pass
+    variables["KIPRJMOD"] = str(project)
+    found = {}
+    for table in ([Path(project) / "fp-lib-table"] + ([config / "fp-lib-table"] if config is not None else [])):
+        for nickname, uri in re.findall(r'\(lib\s+\(name\s+"?([^")]+)"?\)\s*\(type\s+"?[^")]+"?\)\s*\(uri\s+"?([^")]+)"?\)', _read(table)):
+            path = re.sub(r"\$\{(\w+)\}", lambda match: variables.get(match.group(1), match.group(0)), uri)
+            found.setdefault(nickname, Path(path))
+    return found
+
+
+def footprint_of(settings, lcsc, project):
+    """Where the part {lcsc} is for a board in {project}, as a dict: its footprint library's nickname and folder, its
+    footprint's name, the letters of its reference, its value and its record's fields; from the library of the settings'
+    name that KiCad finds for the board, else the library on this computer. Raises when neither holds it."""
+    name = settings["name"]
+    folders = [footprint_libraries(project).get(name)]
+    if not to_server(settings):
+        folders.append(library_paths(settings)[2])
+    for pretty in (folder for folder in folders if folder is not None):
+        block = symbol(_read(pretty.with_suffix(".kicad_sym")), lcsc)
+        if block is None:
+            continue
+        footprint = prop(block, "Footprint").split(":", 1)[-1]
+        if footprint and (pretty / (footprint + ".kicad_mod")).is_file():
+            return {"library": name, "folder": str(pretty), "footprint": footprint,
+                    "reference": re.sub(r"[^A-Za-z]", "", prop(block, "Reference")) or "U", "value": prop(block, "Value") or lcsc,
+                    "fields": {field: prop(block, key) for field, key in (("LCSC", "LCSC Part"), ("Manufacturer", "Manufacturer"), ("MPN", "MPN"))
+                               if prop(block, key)}}
+    raise RuntimeError(lcsc + " is in no " + name + " library KiCad finds for this board: import it first"
+                       + (", and run run.py --use with the server's library/lcsc/kicad" if to_server(settings) else "") + ".")
+
+
 def _read(path):
     try:
         return path.read_text(encoding="utf-8")
     except OSError:
         return ""
+
+
+def _write(path, text):
+    """Writes {text} as UTF-8 with Unix line endings, as KiCad writes its files."""
+    with open(path, "w", encoding="utf-8", newline="\n") as file:
+        file.write(text)

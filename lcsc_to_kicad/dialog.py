@@ -1,6 +1,6 @@
 """The window, laid out as EasyEDA's part selector: LCSC's categories on the left, a search above, and each part a card
 with its photo, its package, maker and LCSC number, its datasheet, its prices and stock, what EasyEDA has drawn of it,
-and a button that imports it into your KiCad library."""
+and a button that imports it into your KiCad library; opened from the PCB editor, one that puts it on the board too."""
 import io
 import threading
 import webbrowser
@@ -124,6 +124,11 @@ class PartCard(wx.Panel):
         self.action = wx.Button(self, label="Import", size=(120, 32))
         self.action.Bind(wx.EVT_BUTTON, lambda event: dialog.import_parts([part], False))
         right.Add(self.action, 0, wx.ALIGN_RIGHT)
+        if dialog.board is not None:
+            put = wx.Button(self, label="Place on board", size=(120, 32))
+            put.SetToolTip("Put its footprint on the board, in its middle, imported first if the library does not hold it yet")
+            put.Bind(wx.EVT_BUTTON, lambda event: dialog.place_part(part))
+            right.Add(put, 0, wx.ALIGN_RIGHT | wx.TOP, 6)
 
         row = wx.BoxSizer(wx.HORIZONTAL)
         row.Add(self.photo, 0, wx.ALL, 12)
@@ -182,7 +187,10 @@ class PartCard(wx.Panel):
 
 
 class LcscDialog(wx.Dialog):
-    def __init__(self, parent=None):
+    """The window; {board}, the board open in the PCB editor, when it is opened there, to put parts on."""
+
+    def __init__(self, parent=None, board=None):
+        self.board = board
         super().__init__(parent, title="LCSC parts to KiCad", size=(1320, 860), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MAXIMIZE_BOX)
         self.settings = core.load_settings()
         self.loader = ThreadPoolExecutor(max_workers=6)
@@ -369,7 +377,8 @@ class LcscDialog(wx.Dialog):
 
     # ——— Importing ———
 
-    def import_parts(self, parts, overwrite):
+    def import_parts(self, parts, overwrite, then=None):
+        """Imports {parts} away from the window, replacing them when {overwrite}; then {then}, when given, once they are in."""
         settings = dict(self.settings)
 
         def run():
@@ -378,21 +387,43 @@ class LcscDialog(wx.Dialog):
                 if core.in_library(settings, part["lcsc"]) and not overwrite:
                     lines.append(part["lcsc"] + " is already in " + settings["name"] + ": right-click it to import it again.")
                     continue
-                core.convert(settings, part["lcsc"], overwrite)
+                said = core.convert(settings, part["lcsc"], overwrite)
                 lines.append("Imported {} {} into {}: its symbol, footprint and 3D model. In KiCad: Place › Add Symbol, library {}."
                              .format(part["lcsc"], part["mpn"], settings["name"], settings["name"]))
+                # What the library's check finds wrong with it, such as a pin without a pad.
+                lines += [line for line in said if line.startswith("PROBLEM")]
             if not core.registered(settings):
                 lines.append(core.register(settings))
             return lines
 
         self.say("Converting " + ", ".join(part["lcsc"] for part in parts) + " with easyeda2kicad…")
-        self.work(run, self.imported)
+        self.work(run, lambda lines: self.imported(lines, then))
 
-    def imported(self, lines):
+    def imported(self, lines, then=None):
         self.say("  ".join(lines))
         for child in self.cards.GetChildren():
             if isinstance(child.GetWindow(), PartCard):
                 child.GetWindow().refresh_state()
+        if then is not None:
+            then()
+
+    def place_part(self, part):
+        """Puts {part} on the board, imported first when the library does not hold it yet."""
+        if core.in_library(self.settings, part["lcsc"]):
+            self.placed(part)
+        else:
+            self.import_parts([part], False, lambda: self.placed(part))
+
+    def placed(self, part):
+        import pcbnew
+        from . import place
+        try:
+            reference = place.place(self.board, self.settings, part["lcsc"])
+        except RuntimeError as failure:
+            self.say("Not placed: " + str(failure))
+            return
+        pcbnew.Refresh()
+        self.say("Placed " + reference + ", " + (part["mpn"] or part["lcsc"]) + ", in the middle of the board: close this window to move it.")
 
     def choose_library(self):
         link = wx.GetTextFromUser("The desktop link from Modular Electronics Studio's page (Connect a desktop program…): parts then go into "

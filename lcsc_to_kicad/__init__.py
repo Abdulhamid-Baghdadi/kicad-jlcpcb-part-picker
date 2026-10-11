@@ -1,4 +1,4 @@
-"""LCSC parts to KiCad: a button in KiCad's PCB editor that opens the search window.
+"""LCSC parts to KiCad: a button in KiCad's PCB editor that opens the search window, to import parts and put them on the board.
 
 KiCad loads this folder from its plugins folder (install.py puts it there); the window itself is dialog.py, and it
 runs on its own too: run.py.
@@ -18,7 +18,7 @@ if pcbnew is not None:
         def defaults(self):
             self.name = "LCSC parts to KiCad"
             self.category = "Libraries"
-            self.description = "Search LCSC's parts and import their EasyEDA symbol, footprint and 3D model into your own library"
+            self.description = "Search LCSC's parts, import their EasyEDA symbol, footprint and 3D model into your own library, and place them on the board"
             self.show_toolbar_button = True
             self.icon_file_name = os.path.join(os.path.dirname(__file__), "icon.png")
 
@@ -26,7 +26,10 @@ if pcbnew is not None:
             import wx
             from .dialog import LcscDialog
             parent = next((window for window in wx.GetTopLevelWindows() if window.GetTitle().lower().startswith("pcb editor")), None)
-            dialog = LcscDialog(parent)
-            dialog.Show()
+            # Held open while it runs: the board is changed only while the plugin runs, as KiCad expects of a plugin.
+            dialog = LcscDialog(parent, pcbnew.GetBoard())
+            dialog.ShowModal()
+            dialog.Destroy()
+            pcbnew.Refresh()
 
     LcscToKicad().register()
