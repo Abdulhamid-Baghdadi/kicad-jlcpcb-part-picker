@@ -1,6 +1,6 @@
-"""The schematic editor's button: opens the LCSC parts window, as run.py does, with KiCad's own Python, which has the
-window's toolkit (wx), apart from the plugin's environment KiCad runs this in. install.py puts run.py and the
-lcsc_to_kicad package beside it."""
+"""The schematic editor's button: opens the LCSC parts window, as run.py --schematic does, with a button on each part
+that puts its symbol on the schematic; with KiCad's own Python, which has the window's toolkit (wx), apart from the
+plugin's environment KiCad runs this in. install.py puts run.py and the lcsc_to_kicad package beside it."""
 import os
 import subprocess
 import sys
@@ -22,4 +22,4 @@ def kicad_python():
 environment = {key: value for key, value in os.environ.items()
                if key.upper() not in ("PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV", "PYTHONEXECUTABLE", "__PYVENV_LAUNCHER__")}
 flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-subprocess.Popen([kicad_python(), os.path.join(HERE, "run.py")], cwd=HERE, env=environment, creationflags=flags, close_fds=True)
+subprocess.Popen([kicad_python(), os.path.join(HERE, "run.py"), "--schematic"], cwd=HERE, env=environment, creationflags=flags, close_fds=True)

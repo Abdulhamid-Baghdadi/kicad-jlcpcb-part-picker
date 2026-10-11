@@ -1,6 +1,7 @@
 """The window, laid out as EasyEDA's part selector: LCSC's categories on the left, a search above, and each part a card
 with its photo, its package, maker and LCSC number, its datasheet, its prices and stock, what EasyEDA has drawn of it,
-and a button that imports it into your KiCad library; opened from the PCB editor, one that puts it on the board too."""
+and a button that imports it into your KiCad library; opened from the PCB editor, one that puts it on the board too, and
+from the schematic editor, one that puts its symbol on the schematic."""
 import io
 import threading
 import webbrowser
@@ -129,6 +130,12 @@ class PartCard(wx.Panel):
             put.SetToolTip("Put its footprint on the board, in its middle, imported first if the library does not hold it yet")
             put.Bind(wx.EVT_BUTTON, lambda event: dialog.place_part(part))
             right.Add(put, 0, wx.ALIGN_RIGHT | wx.TOP, 6)
+        if dialog.schematic:
+            put = wx.Button(self, label="Place on schematic", size=(140, 32))
+            put.SetToolTip("Hang its symbol on the cursor in the schematic editor, to put down with a click; imported first if"
+                           " the library does not hold it yet")
+            put.Bind(wx.EVT_BUTTON, lambda event: dialog.place_on_schematic(part))
+            right.Add(put, 0, wx.ALIGN_RIGHT | wx.TOP, 6)
 
         row = wx.BoxSizer(wx.HORIZONTAL)
         row.Add(self.photo, 0, wx.ALL, 12)
@@ -187,10 +194,12 @@ class PartCard(wx.Panel):
 
 
 class LcscDialog(wx.Dialog):
-    """The window; {board}, the board open in the PCB editor, when it is opened there, to put parts on."""
+    """The window; {board}, the board open in the PCB editor, when it is opened there, to put parts on; {schematic},
+    whether it is opened from the schematic editor, to put parts' symbols there."""
 
-    def __init__(self, parent=None, board=None):
+    def __init__(self, parent=None, board=None, schematic=False):
         self.board = board
+        self.schematic = schematic
         super().__init__(parent, title="LCSC parts to KiCad", size=(1320, 860), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MAXIMIZE_BOX)
         self.settings = core.load_settings()
         self.loader = ThreadPoolExecutor(max_workers=6)
@@ -424,6 +433,28 @@ class LcscDialog(wx.Dialog):
             return
         pcbnew.Refresh()
         self.say("Placed " + reference + ", " + (part["mpn"] or part["lcsc"]) + ", in the middle of the board: close this window to move it.")
+
+    def place_on_schematic(self, part):
+        """Puts {part}'s symbol on the cursor in the schematic editor, imported first when the library does not hold it yet."""
+        if core.in_library(self.settings, part["lcsc"]):
+            self.placed_on_schematic(part)
+        else:
+            self.import_parts([part], False, lambda: self.placed_on_schematic(part))
+
+    def placed_on_schematic(self, part):
+        from . import paste
+        name = part["mpn"] or part["lcsc"]
+        try:
+            piece = paste.fragment(self.settings, part["lcsc"])
+        except RuntimeError as failure:
+            self.say("Not placed: " + str(failure))
+            return
+        if not paste.to_clipboard(piece):
+            self.say("Not placed: the clipboard is in use by another program; try again.")
+        elif paste.into_editor():
+            self.say(name + " hangs on the cursor in the schematic editor: click where it goes.")
+        else:
+            self.say(name + " is on the clipboard: in the schematic editor, press Ctrl+V, then click where it goes.")
 
     def choose_library(self):
         link = wx.GetTextFromUser("The desktop link from Modular Electronics Studio's page (Connect a desktop program…): parts then go into "

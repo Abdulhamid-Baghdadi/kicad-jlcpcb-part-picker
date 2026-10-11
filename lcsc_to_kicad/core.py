@@ -560,9 +560,9 @@ def footprint_libraries(project):
             variables.update(((json.loads(_read(config / "kicad_common.json") or "{}").get("environment") or {}).get("vars")) or {})
         except ValueError:
             pass
-    variables["KIPRJMOD"] = str(project)
+    variables["KIPRJMOD"] = str(project or "")
     found = {}
-    for table in ([Path(project) / "fp-lib-table"] + ([config / "fp-lib-table"] if config is not None else [])):
+    for table in (([Path(project) / "fp-lib-table"] if project else []) + ([config / "fp-lib-table"] if config is not None else [])):
         for nickname, uri in re.findall(r'\(lib\s+\(name\s+"?([^")]+)"?\)\s*\(type\s+"?[^")]+"?\)\s*\(uri\s+"?([^")]+)"?\)', _read(table)):
             path = re.sub(r"\$\{(\w+)\}", lambda match: variables.get(match.group(1), match.group(0)), uri)
             found.setdefault(nickname, Path(path))
@@ -588,6 +588,24 @@ def footprint_of(settings, lcsc, project):
                     "fields": {field: prop(block, key) for field, key in (("LCSC", "LCSC Part"), ("Manufacturer", "Manufacturer"), ("MPN", "MPN"))
                                if prop(block, key)}}
     raise RuntimeError(lcsc + " is in no " + name + " library KiCad finds for this board: import it first"
+                       + (", and run run.py --use with the server's library/lcsc/kicad" if to_server(settings) else "") + ".")
+
+
+def symbol_of(settings, lcsc, project=None):
+    """The symbol of the part {lcsc}, as (its block in its .kicad_sym, that file's format version), from the library of
+    the settings' name that KiCad finds for {project} (or KiCad's global tables, without one), else the library on this
+    computer. Raises when neither holds it."""
+    name = settings["name"]
+    folders = [footprint_libraries(project).get(name)]
+    if not to_server(settings):
+        folders.append(library_paths(settings)[2])
+    for pretty in (folder for folder in folders if folder is not None):
+        text = _read(pretty.with_suffix(".kicad_sym"))
+        block = symbol(text, lcsc)
+        if block is not None:
+            version = re.search(r"\(version\s+(\d+)\)", text)
+            return block, version.group(1) if version else "20211014"
+    raise RuntimeError(lcsc + " is in no " + name + " library KiCad finds: import it first"
                        + (", and run run.py --use with the server's library/lcsc/kicad" if to_server(settings) else "") + ".")
 
 

@@ -1,6 +1,7 @@
 """LCSC parts to KiCad, on its own or from the command line.
 
     run.py                              opens the search window (run it with KiCad's Python, which has wx)
+    run.py --schematic                  … with a button on each part that puts its symbol in KiCad's schematic editor
     run.py C6186 C25804 …               imports those LCSC parts into your library, no window
     run.py C6186 --out MyParts          makes a library of them in the folder MyParts, KiCad's settings left as they are
     run.py C6186 --out MyParts --project path/to/board
@@ -62,6 +63,7 @@ def main():
     parser.add_argument("--check", nargs="?", const="", metavar="FOLDER", help="check a library: your own, or the one in FOLDER")
     parser.add_argument("--retire", action="store_true", help="take the library on this computer out of KiCad's global tables")
     parser.add_argument("--use", metavar="FOLDER", help="tell KiCad where the server's library is")
+    parser.add_argument("--schematic", action="store_true", help="open the window with a button that puts parts in the schematic editor")
     arguments = parser.parse_args()
     settings = core.load_settings()
     if arguments.out:
@@ -91,15 +93,15 @@ def main():
         parser.error("an LCSC part number is a C and digits, such as C6186, not " + ", ".join(wrong))
     if numbers:
         return command_line(settings, numbers, arguments.project)
-    window()
+    window(arguments.schematic)
     return 0
 
 
-def window():
+def window(schematic=False):
     import wx
     from lcsc_to_kicad.dialog import LcscDialog
     app = wx.App()
-    dialog = LcscDialog()
+    dialog = LcscDialog(schematic=schematic)
     dialog.ShowModal()
     dialog.Destroy()
     app.Destroy()

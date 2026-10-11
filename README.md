@@ -24,7 +24,7 @@ KiCad's own library does not tie a symbol to one footprint; here every part is a
 
 ## In the schematic editor
 
-KiCad shows its older Python plugins, such as this tool's button, only in the PCB editor. For the schematic editor, `install.py` also installs a button of KiCad's newer kind (`schematic/`, in `Documents/KiCad/<version>/plugins/lcsc-to-kicad`), which opens the same window with KiCad's own Python. KiCad shows such buttons once its API is on: **Preferences › Preferences… › Plugins › Enable KiCad API**, then restart KiCad. The first start after installing makes the button a Python environment of its own, which takes a few seconds; the button shows in schematic editors opened after that. In the schematic editor the window imports parts; **Place › Add Symbol** then finds them in the library **LCSC**.
+KiCad shows its older Python plugins, such as this tool's button, only in the PCB editor. For the schematic editor, `install.py` also installs a button of KiCad's newer kind (`schematic/`, in `Documents/KiCad/<version>/plugins/lcsc-to-kicad`), which opens the same window with KiCad's own Python. KiCad shows such buttons once its API is on: **Preferences › Preferences… › Plugins › Enable KiCad API**, then restart KiCad. The first start after installing makes the button a Python environment of its own, which takes a few seconds; the button shows in schematic editors opened after that. Opened there, each part has **Place on schematic** (see below); **Place › Add Symbol** finds the parts imported in the library **LCSC** too.
 
 ## Using it
 
@@ -37,7 +37,8 @@ In the window, laid out as EasyEDA's part selector:
 2. Each part is a card: its photo, its name (a link to its LCSC page), its footprint, maker, LCSC number and datasheet, its price at each quantity, its stock, and whether it is Basic or Extended.
 3. Click a card to see what EasyEDA has drawn of it, symbol, footprint and 3D model, with a picture of its symbol. It is asked one part at a time: EasyEDA turns away many requests at once for a few minutes.
 4. **Import** puts it into your library; **✓ In library** marks those already there, and a right-click imports one again, replacing it.
-5. Opened from the PCB editor, **Place on board** puts it on the open board, imported first when it is not yet in the library: its footprint, named by its library (`LCSC:…`, so that **Update Footprints from Library** finds it), with the next free reference of its kind, its value and its LCSC number, maker and part number as hidden fields, in the middle of the board, beside the parts already there. Close the window to move it. A symbol cannot be put on the schematic this way: KiCad gives plugins no way into its schematic editor.
+5. Opened from the PCB editor, **Place on board** puts it on the open board, imported first when it is not yet in the library: its footprint, named by its library (`LCSC:…`, so that **Update Footprints from Library** finds it), with the next free reference of its kind, its value and its LCSC number, maker and part number as hidden fields, in the middle of the board, beside the parts already there. Close the window to move it.
+6. Opened from the schematic editor, **Place on schematic** hangs its symbol on the cursor there, imported first when it is not yet in the library: click where it goes, as after **Place › Add Symbol**. It is named by its library (`LCSC:…`), its reference left to be numbered (`U?`), with its value, footprint and LCSC record. KiCad's API cannot add to a schematic yet, so the window pastes it: it puts the symbol on the clipboard as KiCad copies one, brings the schematic editor forward and presses Ctrl+V there. Where it cannot bring it forward (or on macOS and Linux), it says so: press Ctrl+V in the schematic editor yourself.
 
 ## Where the parts go
 
@@ -53,6 +54,7 @@ When the server runs on this computer, KiCad can use its library directly, in an
 | --- | --- |
 | `lcsc_to_kicad/core.py` | searching, converting with easyeda2kicad, LCSC's record, the check, where KiCad finds a footprint, and KiCad's library tables |
 | `lcsc_to_kicad/place.py` | putting a part on the board, with KiCad's Python |
+| `lcsc_to_kicad/paste.py` | putting a part's symbol on the schematic, through the clipboard |
 | `lcsc_to_kicad/dialog.py` | the window |
 | `lcsc_to_kicad/__init__.py` | the PCB editor's button |
 | `run.py`, `LCSC to KiCad.bat` | the window on its own, and the command line |
