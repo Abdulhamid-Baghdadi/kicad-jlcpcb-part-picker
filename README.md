@@ -22,6 +22,10 @@ KiCad's own library does not tie a symbol to one footprint; here every part is a
   The tool finds that Python on the PATH, or you name it as `"python"` in `~/.lcsc-to-kicad.json`.
 - **Internet access**, to JLCPCB's parts search and EasyEDA's part data. Both are the websites' own, unofficial, endpoints, and may change.
 
+## In the schematic editor
+
+KiCad shows its older Python plugins, such as this tool's button, only in the PCB editor. For the schematic editor, `install.py` also installs a button of KiCad's newer kind (`schematic/`, in `Documents/KiCad/<version>/plugins/lcsc-to-kicad`), which opens the same window with KiCad's own Python. KiCad shows such buttons once its API is on: **Preferences › Preferences… › Plugins › Enable KiCad API**, then restart KiCad. In the schematic editor the window imports parts; **Place › Add Symbol** then finds them in the library **LCSC**.
+
 ## Using it
 
 - **In KiCad's PCB editor:** run `python install.py` once, then in the PCB editor **Tools › External Plugins › Refresh Plugins**; the button **LCSC parts to KiCad** is on the top toolbar, among the plugins. To have the plugins' buttons on the right toolbar, beside the drawing tools, as KiCad 10 lets you arrange its toolbars: open **Preferences › Preferences… › PCB Editor › Toolbars** once and press **OK**, so that KiCad writes them down, then run `python install.py --sidebar` and restart KiCad (`--no-sidebar` puts them back; the files before are kept as `*.before-lcsc`).
@@ -52,4 +56,5 @@ When the server runs on this computer, KiCad can use its library directly, in an
 | `lcsc_to_kicad/dialog.py` | the window |
 | `lcsc_to_kicad/__init__.py` | the PCB editor's button |
 | `run.py`, `LCSC to KiCad.bat` | the window on its own, and the command line |
-| `install.py` | copies the plugin into KiCad's plugins folder; `--remove` takes it out; `--sidebar` moves the plugins' buttons to the right toolbar |
+| `install.py` | copies the plugin into KiCad's plugins folder, and the schematic editor's button into KiCad's API plugins folder; `--remove` takes both out; `--sidebar` moves the plugins' buttons to the right toolbar |
+| `schematic/` | the schematic editor's button: `plugin.json` and `open_window.py`, which opens the window with KiCad's Python |
