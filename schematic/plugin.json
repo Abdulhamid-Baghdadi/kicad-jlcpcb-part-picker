@@ -1,6 +1,6 @@
 {
   "$schema": "https://go.kicad.org/api/schemas/v1",
-  "identifier": "studio.lcsc-to-kicad.schematic",
+  "identifier": "studio.lcsc.schematic",
   "name": "LCSC parts to KiCad",
   "description": "Opens the LCSC parts window from the schematic editor: search LCSC's parts and import their symbol, footprint and 3D model into your library.",
   "runtime": {

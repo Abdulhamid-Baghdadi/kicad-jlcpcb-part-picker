@@ -24,7 +24,7 @@ KiCad's own library does not tie a symbol to one footprint; here every part is a
 
 ## In the schematic editor
 
-KiCad shows its older Python plugins, such as this tool's button, only in the PCB editor. For the schematic editor, `install.py` also installs a button of KiCad's newer kind (`schematic/`, in `Documents/KiCad/<version>/plugins/lcsc-to-kicad`), which opens the same window with KiCad's own Python. KiCad shows such buttons once its API is on: **Preferences › Preferences… › Plugins › Enable KiCad API**, then restart KiCad. In the schematic editor the window imports parts; **Place › Add Symbol** then finds them in the library **LCSC**.
+KiCad shows its older Python plugins, such as this tool's button, only in the PCB editor. For the schematic editor, `install.py` also installs a button of KiCad's newer kind (`schematic/`, in `Documents/KiCad/<version>/plugins/lcsc-to-kicad`), which opens the same window with KiCad's own Python. KiCad shows such buttons once its API is on: **Preferences › Preferences… › Plugins › Enable KiCad API**, then restart KiCad. The first start after installing makes the button a Python environment of its own, which takes a few seconds; the button shows in schematic editors opened after that. In the schematic editor the window imports parts; **Place › Add Symbol** then finds them in the library **LCSC**.
 
 ## Using it
 
@@ -57,4 +57,4 @@ When the server runs on this computer, KiCad can use its library directly, in an
 | `lcsc_to_kicad/__init__.py` | the PCB editor's button |
 | `run.py`, `LCSC to KiCad.bat` | the window on its own, and the command line |
 | `install.py` | copies the plugin into KiCad's plugins folder, and the schematic editor's button into KiCad's API plugins folder; `--remove` takes both out; `--sidebar` moves the plugins' buttons to the right toolbar |
-| `schematic/` | the schematic editor's button: `plugin.json` and `open_window.py`, which opens the window with KiCad's Python |
+| `schematic/` | the schematic editor's button: `plugin.json`, `open_window.py`, which opens the window with KiCad's Python, and `requirements.txt`, empty, which KiCad needs before it shows the button |

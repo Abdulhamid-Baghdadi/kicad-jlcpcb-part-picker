@@ -1,0 +1,2 @@
+# Nothing to install: the window runs with KiCad's own Python, which has wx. KiCad marks an API plugin ready only once
+# it has installed this file, so it is here even empty.
