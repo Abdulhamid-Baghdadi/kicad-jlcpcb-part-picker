@@ -174,7 +174,9 @@ def _environment():
 
 
 def _run(command, timeout):
-    return subprocess.run(command, capture_output=True, text=True, timeout=timeout, encoding="utf-8", errors="replace", env=_environment(),
+    # stdin is given its own handle: KiCad started from a terminal that has since closed leaves it one Windows cannot
+    # hand on (WinError 50), and every Python would then seem to lack easyeda2kicad.
+    return subprocess.run(command, capture_output=True, stdin=subprocess.DEVNULL, text=True, timeout=timeout, encoding="utf-8", errors="replace", env=_environment(),
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
