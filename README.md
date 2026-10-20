@@ -1,6 +1,14 @@
 # LCSC parts to KiCad
 
-A small tool for KiCad: search LCSC's parts, as JLCPCB's parts search finds them, import those you choose into a KiCad library, Modular Electronics Studio's on the server or one of your own, and put them on the board open in the PCB editor. Each part comes as EasyEDA has drawn it:
+<img src="lcsc_to_kicad/icon.png" alt="" width="48" align="right">
+
+A KiCad add-on (KiCad 8–10) to **search LCSC/JLCPCB's parts from inside KiCad and drop them straight into your design**: a part selector like EasyEDA's, opened from a toolbar button in the PCB editor and the schematic editor. Pick a part and it is imported into your own KiCad library, checked, and placed on the board or schematic, with its footprint and 3D model already linked, so the board can go to JLCPCB assembly as it is.
+
+Search, import and place are also available from the command line.
+
+---
+
+It searches LCSC's parts, as JLCPCB's parts search finds them, imports those you choose into a KiCad library of your own, and puts them on the board open in the PCB editor. Each part comes as EasyEDA has drawn it:
 - its symbol, with its footprint already set and its LCSC number;
 - its footprint;
 - its 3D model, as STEP where there is one, so that KiCad's STEP export has it;
@@ -42,6 +50,8 @@ In the window, laid out as EasyEDA's part selector:
 
 ## Where the parts go
 
+By default, into a library on your computer (second paragraph below). The tool was written as part of a larger project, Modular Electronics Studio, and can optionally send parts to that project's server instead; most users can ignore that part.
+
 **Library…** asks for the desktop link that Modular Electronics Studio's page gives (**Connect a desktop program…**). With it, each part is converted on the server and goes into its LCSC library, `library/lcsc/kicad`: its symbol, footprint and 3D model, and an element of its own, whose pins are its ports, with the part's record from LCSC. The page's **Parts from LCSC…** adds parts to the same library. Every KiCad project the server writes takes the library along in its `libraries/` folder, listed as **LCSC** in the project's own symbol and footprint tables, so KiCad needs no global library.
 
 Without a link, the tool keeps a library on this computer, as it did before: `Documents/KiCad/lcsc-library/LCSC.kicad_sym`, `LCSC.pretty` and `LCSC.3dshapes`, added to KiCad's global symbol and footprint tables at the first import (copies kept as `*.before-lcsc`). To move to the server's library, give **Library…** the link, and run `python run.py --retire`: it takes **LCSC** out of KiCad's global tables, keeping copies as `*.before-retire`, so that a project's own **LCSC**, the server's, is the one KiCad finds. The folder on this computer is then no longer used; delete it when you like.
@@ -60,3 +70,9 @@ When the server runs on this computer, KiCad can use its library directly, in an
 | `run.py`, `LCSC to KiCad.bat` | the window on its own, and the command line |
 | `install.py` | copies the plugin into KiCad's plugins folder, and the schematic editor's button into KiCad's API plugins folder; `--remove` takes both out; `--sidebar` moves the plugins' buttons to the right toolbar |
 | `schematic/` | the schematic editor's button: `plugin.json`, `open_window.py`, which opens the window with KiCad's Python, and `requirements.txt`, empty, which KiCad needs before it shows the button |
+
+## Licence
+
+MIT, see [LICENSE](LICENSE). The conversion is done by [easyeda2kicad](https://github.com/uPesy/easyeda2kicad.py) (AGPL-3.0), which you install yourself; it is run as a separate program, and none of its code is in this repository. JLCPCB's and EasyEDA's search and part data come from their websites' own, unofficial, endpoints; use them as their terms allow.
+
+Written by Abdulhamid Baghdadi, 2026.
