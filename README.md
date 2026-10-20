@@ -6,7 +6,7 @@
 
 A KiCad add-on (KiCad 8–10) to **search LCSC/JLCPCB's parts from inside KiCad and drop them straight into your design**: a part selector like EasyEDA's, opened from a toolbar button in the PCB editor and the schematic editor. Pick a part and it is imported into your own KiCad library (symbol, footprint and 3D model, via [easyeda2kicad](https://github.com/uPesy/easyeda2kicad.py)), checked, and placed on the board or schematic, so the board can go to JLCPCB assembly as it is.
 
-<p align="center"><img src="docs/images/demo.gif" alt="Searching C25804 in the LCSC window opened from KiCad's schematic editor, then Place on schematic: the 10 kΩ resistor lands on the sheet as R1" width="760"></p>
+<p align="center"><img src="docs/images/demo.gif" alt="Step by step: the LCSC button in the schematic editor, the part picker, searching C25804, its price and stock, Place on schematic, and the resistor on the sheet as R1" width="800"></p>
 
 ### Quick install (Windows, KiCad 10)
 
