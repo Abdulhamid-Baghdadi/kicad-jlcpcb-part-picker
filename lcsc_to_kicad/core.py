@@ -421,6 +421,9 @@ def check(folder, name, only=None):
         for model in re.findall(r'\(model "([^"]+)"', board):
             if not (folder / (name + ".3dshapes") / model.replace("\\", "/").split("/")[-1]).is_file():
                 lines.append("PROBLEM " + part + ": its 3D model " + model + " is not in " + name + ".3dshapes.")
+            elif not model.startswith("${") and not os.path.isabs(model):
+                # KiCad reads a relative path from the open project's folder, so the model would go missing there.
+                lines.append("PROBLEM " + part + ": its 3D model is named by the relative path " + model + ", which KiCad does not find.")
     return lines
 
 

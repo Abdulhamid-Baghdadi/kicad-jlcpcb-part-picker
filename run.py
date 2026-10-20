@@ -68,7 +68,8 @@ def main():
     settings = core.load_settings()
     if arguments.out:
         # A library of its own: on this computer, whatever the settings say of the server.
-        settings.update(library=arguments.out, server="", own=True)
+        # Made absolute: easyeda2kicad names each 3D model by the path it is given, and KiCad would not find a relative one.
+        settings.update(library=str(Path(arguments.out).resolve()), server="", own=True)
     if arguments.name:
         settings["name"] = arguments.name
     if arguments.retire:
