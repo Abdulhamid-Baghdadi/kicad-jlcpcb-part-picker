@@ -1,10 +1,20 @@
-# LCSC parts to KiCad
+# KiCad JLCPCB part picker
+
+*LCSC parts to KiCad*
 
 <img src="lcsc_to_kicad/icon.png" alt="" width="48" align="right">
 
 A KiCad add-on (KiCad 8–10) to **search LCSC/JLCPCB's parts from inside KiCad and drop them straight into your design**: a part selector like EasyEDA's, opened from a toolbar button in the PCB editor and the schematic editor. Pick a part and it is imported into your own KiCad library (symbol, footprint and 3D model, via [easyeda2kicad](https://github.com/uPesy/easyeda2kicad.py)), checked, and placed on the board or schematic, so the board can go to JLCPCB assembly as it is.
 
 <p align="center"><img src="docs/images/demo.gif" alt="Searching C25804 in the LCSC window opened from KiCad's schematic editor, then Place on schematic: the 10 kΩ resistor lands on the sheet as R1" width="760"></p>
+
+### Quick install (Windows, KiCad 10)
+
+1. [Download the latest ZIP](https://github.com/Abdulhamid-Baghdadi/kicad-jlcpcb-part-picker/releases/latest) and unpack it.
+2. In a terminal in that folder: `python -m pip install easyeda2kicad`, then `python install.py`.
+3. In KiCad's PCB editor: **Tools › External Plugins › Refresh Plugins**: the **LCSC** button is on the top toolbar. For the schematic editor, also turn on **Preferences › Plugins › Enable KiCad API** and restart KiCad.
+
+Click the button, search `C6186`, press **Place on board**. Step-by-step details, macOS/Linux and troubleshooting are in [Installation](#installation).
 
 **Features**
 - Search or browse LCSC's whole catalogue from KiCad: by part, value or LCSC number; in stock / Basic parts only; sorted by stock or price.
@@ -66,10 +76,10 @@ python -m easyeda2kicad --help
 
 The add-on looks for `python`, `python3` and `py` on the PATH. If your Python is elsewhere, see *Troubleshooting*.
 
-**3. Get the add-on**: download `kicad-lcsc-parts-<version>.zip` from the [latest release](https://github.com/Abdulhamid-Baghdadi/kicad-lcsc-parts/releases/latest) and unpack it, or clone the repository:
+**3. Get the add-on**: download `kicad-jlcpcb-part-picker-<version>.zip` from the [latest release](https://github.com/Abdulhamid-Baghdadi/kicad-jlcpcb-part-picker/releases/latest) and unpack it, or clone the repository:
 
 ```bash
-git clone https://github.com/Abdulhamid-Baghdadi/kicad-lcsc-parts.git
+git clone https://github.com/Abdulhamid-Baghdadi/kicad-jlcpcb-part-picker.git
 ```
 
 **4. Run the installer** from that folder:
