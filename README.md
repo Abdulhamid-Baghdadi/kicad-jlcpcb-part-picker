@@ -6,6 +6,13 @@ A KiCad add-on (KiCad 8–10) to **search LCSC/JLCPCB's parts from inside KiCad 
 
 <p align="center"><img src="docs/images/demo.gif" alt="Searching C25804 in the LCSC window opened from KiCad's schematic editor, then Place on schematic: the 10 kΩ resistor lands on the sheet as R1" width="760"></p>
 
+**Features**
+- Search or browse LCSC's whole catalogue from KiCad: by part, value or LCSC number; in stock / Basic parts only; sorted by stock or price.
+- One click imports symbol + footprint + 3D model (STEP) into your own library, with maker, part number, datasheet and LCSC number on the symbol.
+- Every import is checked: pins without pads and missing 3D models are reported.
+- **Place on board** and **Place on schematic**, straight from the result.
+- Works from the PCB editor, the schematic editor, on its own, or from the command line (also for making a project-local library).
+
 ## What you get
 
 | | |
@@ -59,7 +66,7 @@ python -m easyeda2kicad --help
 
 The add-on looks for `python`, `python3` and `py` on the PATH. If your Python is elsewhere, see *Troubleshooting*.
 
-**3. Get this repository** (or download the ZIP from GitHub and unpack it):
+**3. Get the add-on**: download `kicad-lcsc-parts-<version>.zip` from the [latest release](https://github.com/Abdulhamid-Baghdadi/kicad-lcsc-parts/releases/latest) and unpack it, or clone the repository:
 
 ```bash
 git clone https://github.com/Abdulhamid-Baghdadi/kicad-lcsc-parts.git
@@ -79,13 +86,13 @@ It copies the add-on into the plugins folder of your newest KiCad (`Documents/Ki
 
 **6. Check it worked.** Click the button, type `C6186` and press Enter: the AMS1117-3.3 regulator appears. Click its card, then **Place on board** (or **Place on schematic**): the status line says it was imported and placed, and the part is in your design. The first import also adds the library **LCSC** to KiCad's global symbol and footprint tables.
 
-To update later: `git pull`, then `python install.py` again. To remove: `python install.py --remove`.
+To update later: get the new version (new ZIP, or `git pull`), then run `python install.py` again. To remove: `python install.py --remove`.
 
 ### Troubleshooting
 
 | Problem | What to do |
 | --- | --- |
-| *"easyeda2kicad was not found"* | Run step 2 again. If that Python is not on the PATH, or the PATH finds another one first, name it in `~/.lcsc-to-kicad.json`: `{"python": "C:/Path/To/python.exe"}`. Versions before 20 Oct 2026 also showed this when KiCad had been started from a terminal; update with `git pull` and `python install.py`. |
+| *"easyeda2kicad was not found"* | Run step 2 again. If that Python is not on the PATH, or the PATH finds another one first, name it in `~/.lcsc-to-kicad.json`: `{"python": "C:/Path/To/python.exe"}`. Versions before 1.0.0 also showed this when KiCad had been started from a terminal; update with `git pull` and `python install.py`. |
 | No button in the PCB editor | **Tools › External Plugins › Refresh Plugins**, or restart KiCad. Check that `Documents/KiCad/<version>/scripting/plugins/lcsc_to_kicad` exists; with several KiCad versions, the installer uses the newest. |
 | No button in the schematic editor | It shows only with **Enable KiCad API** on, after a restart; give the first start a few seconds, then open the schematic editor again. |
 | *"KiCad's folder was not found"* when installing | Start KiCad once, then run `python install.py` again. |
@@ -101,6 +108,22 @@ To update later: `git pull`, then `python install.py` again. To remove: `python 
 5. Imported parts are also in KiCad's own **Place › Add Symbol** and **Add Footprint**, in the library **LCSC**.
 
 The details, the command line and the optional server mode follow.
+
+## FAQ and limitations
+
+**Is it an official LCSC, JLCPCB or EasyEDA tool?** No. It uses the websites' own, unofficial endpoints for search and part data, which may change or rate-limit; use them as their terms allow.
+
+**Which KiCad versions?** Tried end to end on KiCad 10.0.1 (Windows 11). The PCB editor button uses KiCad's Python plugin interface, which KiCad 8 and 9 have too; the schematic editor button needs KiCad's IPC API (KiCad 9 and later). macOS and Linux are expected to work, but have not been tried; there, **Place on schematic** leaves the symbol on the clipboard for you to paste.
+
+**Why does the schematic button need the API, and why does it paste?** KiCad shows its older Python plugins only in the PCB editor, and KiCad 10's API cannot add a symbol to a schematic yet. So the button is an API plugin, and the window puts the symbol on the clipboard as KiCad copies one and presses Ctrl+V in the schematic editor.
+
+**Are EasyEDA's drawings always right?** Not always: some parts' symbols and footprints number their pins differently. The check after each import says so (*PROBLEM … pins 1, A1 … have no pad*); look at the part before you order boards.
+
+**Where do the parts go, and can I share the library with a project?** By default into `Documents/KiCad/lcsc-library`, added to KiCad's global tables. `run.py C6186 --out libs --project <board folder>` makes a library in `libs` and lists it in that project's own tables, by a path relative to the project. The footprints name their 3D models by the library's full path on this computer, so on another computer the 3D models need the library at the same place (or KiCad's path variable, see `--use`).
+
+**Is easyeda2kicad included?** No; it is AGPL-3.0 and you install it yourself (step 2). The add-on runs it as a separate program.
+
+**How do I remove it?** `python install.py --remove` takes both buttons out. Your library and its entries in KiCad's tables stay; remove them in **Preferences › Manage Symbol/Footprint Libraries** if you like.
 
 ## Reference
 

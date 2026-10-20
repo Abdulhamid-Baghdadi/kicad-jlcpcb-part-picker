@@ -1,0 +1,11 @@
+name: Feature request
+description: Something the add-on could do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you would like
+      description: What you are trying to do in KiCad, and how the add-on could help.
+    validations:
+      required: true

@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in the add-on does not work as the README says
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got. The window's status line says what went wrong; please copy it.
+    validations:
+      required: true
+  - type: input
+    id: part
+    attributes:
+      label: LCSC part number(s)
+      placeholder: C6186
+  - type: input
+    id: kicad
+    attributes:
+      label: KiCad version
+      description: Help › About KiCad
+      placeholder: "10.0.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where you opened it
+      options: [PCB editor button, Schematic editor button, On its own (LCSC to KiCad.bat or run.py), Command line]
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Windows 11
+    validations:
+      required: true
+  - type: input
+    id: e2k
+    attributes:
+      label: easyeda2kicad version
+      description: The first line of `python -m easyeda2kicad --help`
